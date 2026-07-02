@@ -3,5 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# VS Code
+.vscode/
+
+# Virtual environment
+venv/
+
 # Environment variables
 .env
