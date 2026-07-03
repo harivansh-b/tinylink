@@ -6,19 +6,22 @@ export interface ShortLink {
     id: string;
     originalUrl: string;
     shortCode: string;
+    title: string | null;
     clickCount: number;
     isActive: boolean;
+    isFavorite: boolean;
     expiresAt: string | null;
     createdAt: string;
     updatedAt: string;
-    userId: string;
+    shortUrl: string;
 }
 
 export interface User {
     id: string;
-    clerkId: string;
     email: string;
+    displayName: string | null;
     createdAt: string;
+    updatedAt: string;
 }
 
 export interface Click {
@@ -41,32 +44,21 @@ export interface DailyClick {
     clicks: number;
 }
 
-export interface BrowserStat {
-    browser: string;
+export interface StatItem {
+    name: string;
     count: number;
-    percentage: number;
-}
-
-export interface DeviceStat {
-    device: string;
-    count: number;
-    percentage: number;
-}
-
-export interface CountryStat {
-    country: string;
-    count: number;
-    percentage: number;
 }
 
 export interface AnalyticsData {
+    urlId: string;
+    shortCode: string;
     totalClicks: number;
     uniqueVisitors: number;
-    topReferrer: string | null;
     dailyClicks: DailyClick[];
-    browserStats: BrowserStat[];
-    deviceStats: DeviceStat[];
-    countryStats: CountryStat[];
+    topBrowsers: StatItem[];
+    topDevices: StatItem[];
+    topCountries: StatItem[];
+    topReferrers: StatItem[];
 }
 
 export interface DashboardStats {
@@ -84,35 +76,40 @@ export interface CreateLinkInput {
     originalUrl: string;
     customAlias?: string;
     expiresAt?: string;
+    title?: string;
 }
 
 export interface UpdateLinkInput {
-    id: string;
-    originalUrl?: string;
     customAlias?: string;
     expiresAt?: string | null;
     isActive?: boolean;
+    title?: string;
 }
 
 // -------------------------------------------------- //
 // Pagination                                          //
 // -------------------------------------------------- //
 
+export interface PaginationMeta {
+    page: number;
+    limit: number;
+    totalCount: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+}
+
 export interface PaginatedResponse<T> {
     items: T[];
-    total: number;
-    page: number;
-    pageSize: number;
-    hasNextPage: boolean;
+    pagination: PaginationMeta;
 }
 
 export interface PaginationParams {
     page: number;
-    pageSize: number;
+    limit: number;
     search?: string;
     status?: LinkStatus;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
+    orderBy?: string;
 }
 
 // -------------------------------------------------- //
@@ -156,11 +153,11 @@ export interface StatCardData {
 // -------------------------------------------------- //
 
 export interface GQLLinksResponse {
-    links: PaginatedResponse<ShortLink>;
+    myUrls: PaginatedResponse<ShortLink>;
 }
 
 export interface GQLLinkResponse {
-    link: ShortLink;
+    url: ShortLink;
 }
 
 export interface GQLDashboardStatsResponse {
@@ -172,13 +169,17 @@ export interface GQLAnalyticsResponse {
 }
 
 export interface GQLCreateLinkResponse {
-    createLink: ShortLink;
+    createShortUrl: ShortLink;
 }
 
 export interface GQLUpdateLinkResponse {
-    updateLink: ShortLink;
+    updateShortUrl: ShortLink;
 }
 
 export interface GQLDeleteLinkResponse {
-    deleteLink: boolean;
+    deleteShortUrl: ShortLink;
+}
+
+export interface GQLToggleFavoriteResponse {
+    toggleFavorite: ShortLink;
 }

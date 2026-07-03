@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useSearchParams } from "react-router-dom";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { Spinner } from "@/components/ui/Spinner";
@@ -33,6 +33,13 @@ function SuspenseWrapper({ children }: { children: React.ReactNode }) {
     );
 }
 
+/** Reads ?linkId= from the URL and passes it to the Analytics page */
+function AnalyticsPage() {
+    const [params] = useSearchParams();
+    const urlId = params.get("linkId") ?? undefined;
+    return <Analytics urlId={urlId} />;
+}
+
 export function AppRoutes() {
     return (
         <SuspenseWrapper>
@@ -50,7 +57,7 @@ export function AppRoutes() {
                 >
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/links" element={<Links />} />
-                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/analytics" element={<AnalyticsPage />} />
                     <Route path="/settings" element={<Settings />} />
                 </Route>
 

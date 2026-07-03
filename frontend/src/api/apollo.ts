@@ -11,44 +11,77 @@ const httpLink = createHttpLink({
     uri: import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:8000/graphql",
 });
 
-// Clerk JWT auth link — injected at runtime
+// ── Clerk JWT token getter ────────────────────────────────────────────────────
+// Registered by ClerkApolloSync in App.tsx once Clerk has loaded.
 let getClerkToken: (() => Promise<string | null>) | null = null;
+let clerkEmail: string | null = null;
+let clerkDisplayName: string | null = null;
 
 export function setClerkTokenGetter(fn: () => Promise<string | null>): void {
     getClerkToken = fn;
 }
 
-// Apollo v4: setContext removed — use a plain ApolloLink with Observable
+export function setClerkUserInfo(email: string | null, displayName: string | null): void {
+    clerkEmail = email;
+    clerkDisplayName = displayName;
+}
+
+// ── Auth link ─────────────────────────────────────────────────────────────────
+// Fetches the Clerk JWT and injects it as an Authorization header before the
+// request is forwarded to httpLink.  Uses a plain object form of setContext
+// (not the callback form) to avoid the double-then / callback-never-called bug.
 const authLink = new ApolloLink((operation, forward) => {
     return new Observable((observer) => {
+        let cancelled = false;
+        let innerSub: { unsubscribe(): void } | undefined;
+
         (getClerkToken ? getClerkToken() : Promise.resolve(null))
             .then((token) => {
-                operation.setContext(({ headers = {} }: { headers?: Record<string, string> }) => ({
+                if (cancelled) return;
+
+                // Read current context headers (e.g. from previous links)
+                const { headers = {} } = operation.getContext() as {
+                    headers?: Record<string, string>;
+                };
+
+                // Merge the Authorization and Clerk User Info headers using the object form
+                operation.setContext({
                     headers: {
                         ...headers,
                         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        ...(clerkEmail ? { "X-Clerk-Email": clerkEmail } : {}),
+                        ...(clerkDisplayName ? { "X-Clerk-Display-Name": clerkDisplayName } : {}),
                     },
-                }));
-            })
-            .then(() => {
-                const sub = forward(operation).subscribe({
+                });
+
+                // Forward the operation *inside* this .then() so context is
+                // already set when httpLink reads it.
+                innerSub = forward(operation).subscribe({
                     next: observer.next.bind(observer),
                     error: observer.error.bind(observer),
                     complete: observer.complete.bind(observer),
                 });
-                return () => sub.unsubscribe();
             })
-            .catch(observer.error.bind(observer));
+            .catch((err) => {
+                if (!cancelled) observer.error(err);
+            });
+
+        // Return cleanup — called when the subscription is cancelled
+        return () => {
+            cancelled = true;
+            innerSub?.unsubscribe();
+        };
     });
 });
 
+// ── Cache ─────────────────────────────────────────────────────────────────────
 const cache = new InMemoryCache({
     typePolicies: {
         Query: {
             fields: {
-                links: {
-                    keyArgs: ["search", "status", "sortBy", "sortOrder"],
-                    merge(existing, incoming) {
+                myUrls: {
+                    keyArgs: ["search", "status", "orderBy"],
+                    merge(_existing, incoming) {
                         return incoming;
                     },
                 },
@@ -57,6 +90,7 @@ const cache = new InMemoryCache({
     },
 });
 
+// ── Client ────────────────────────────────────────────────────────────────────
 export const apolloClient = new ApolloClient({
     link: from([authLink, httpLink]),
     cache,

@@ -3,8 +3,8 @@ import { LINK_FRAGMENT } from "@/graphql/fragments/link";
 
 export const CREATE_LINK = gql`
   ${LINK_FRAGMENT}
-  mutation CreateLink($input: CreateLinkInput!) {
-    createLink(input: $input) {
+  mutation CreateShortUrl($input: CreateShortURLInput!) {
+    createShortUrl(input: $input) {
       ...LinkFields
     }
   }
@@ -12,23 +12,26 @@ export const CREATE_LINK = gql`
 
 export const UPDATE_LINK = gql`
   ${LINK_FRAGMENT}
-  mutation UpdateLink($input: UpdateLinkInput!) {
-    updateLink(input: $input) {
+  mutation UpdateShortUrl($id: UUID!, $input: UpdateShortURLInput!) {
+    updateShortUrl(id: $id, input: $input) {
       ...LinkFields
     }
   }
 `;
 
 export const DELETE_LINK = gql`
-  mutation DeleteLink($id: ID!) {
-    deleteLink(id: $id)
+  ${LINK_FRAGMENT}
+  mutation DeleteShortUrl($id: UUID!) {
+    deleteShortUrl(id: $id) {
+      ...LinkFields
+    }
   }
 `;
 
-export const TOGGLE_LINK_ACTIVE = gql`
+export const TOGGLE_FAVORITE = gql`
   ${LINK_FRAGMENT}
-  mutation ToggleLinkActive($id: ID!) {
-    toggleLinkActive(id: $id) {
+  mutation ToggleFavorite($id: UUID!) {
+    toggleFavorite(id: $id) {
       ...LinkFields
     }
   }

@@ -1,11 +1,10 @@
 import { useEffect, useRef } from "react";
 import { Download, Copy, Check } from "lucide-react";
-import QRCode from "qrcode";
+import * as QRCode from "qrcode";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useToast } from "@/hooks/useToast";
-import { buildShortUrl } from "@/utils";
 import type { ShortLink } from "@/types";
 
 interface QRCodeModalProps {
@@ -19,7 +18,7 @@ export function QRCodeModal({ link, open, onClose }: QRCodeModalProps) {
     const { copy, copied } = useClipboard();
     const { success } = useToast();
 
-    const shortUrl = buildShortUrl(link.shortCode);
+    const shortUrl = link.shortUrl;
 
     useEffect(() => {
         if (open && canvasRef.current) {

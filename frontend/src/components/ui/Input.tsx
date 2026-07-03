@@ -48,8 +48,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                         id={inputId}
                         className={cn(
                             "input-base",
-                            leftIcon && "pl-9",
-                            rightIcon && "pr-9",
+                            leftIcon && "!pl-9",
+                            rightIcon && "!pr-9",
                             error && "border-red-500 focus:border-red-500 focus:shadow-[0_0_0_3px_rgb(239_68_68_/_0.2)]",
                             className
                         )}

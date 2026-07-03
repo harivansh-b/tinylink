@@ -79,9 +79,7 @@ export function EditLinkDialog({
 
     async function onSubmit(data: FormData) {
         try {
-            await updateLink({
-                id: link.id,
-                originalUrl: data.originalUrl,
+            await updateLink(link.id, {
                 customAlias: data.customAlias || undefined,
                 expiresAt: data.expiresAt || null,
                 isActive: data.isActive,
@@ -110,6 +108,7 @@ export function EditLinkDialog({
                     placeholder="https://example.com/very-long-url"
                     leftIcon={<Link2 size={15} />}
                     error={errors.originalUrl?.message}
+                    disabled
                     {...register("originalUrl")}
                 />
 

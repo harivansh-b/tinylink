@@ -1,28 +1,30 @@
 import { gql } from "@apollo/client";
 
 export const ANALYTICS_FRAGMENT = gql`
-  fragment AnalyticsFields on AnalyticsData {
+  fragment AnalyticsFields on AnalyticsType {
+    urlId
+    shortCode
     totalClicks
     uniqueVisitors
-    topReferrer
     dailyClicks {
       date
       clicks
     }
-    browserStats {
-      browser
+    topBrowsers {
+      name
       count
-      percentage
     }
-    deviceStats {
-      device
+    topDevices {
+      name
       count
-      percentage
     }
-    countryStats {
-      country
+    topCountries {
+      name
       count
-      percentage
+    }
+    topReferrers {
+      name
+      count
     }
   }
 `;

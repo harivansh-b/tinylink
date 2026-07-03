@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
     Plus,
     Copy,
@@ -7,7 +8,7 @@ import {
     Pencil,
     Trash2,
     QrCode,
-    MoreHorizontal,
+    BarChart2,
     ExternalLink,
     Filter,
 } from "lucide-react";
@@ -27,7 +28,6 @@ import { EditLinkDialog } from "@/components/links/EditLinkDialog";
 import { QRCodeModal } from "@/components/links/QRCodeModal";
 import {
     formatNumber,
-    buildShortUrl,
     truncateUrl,
     formatDate,
     formatExpiry,
@@ -56,7 +56,7 @@ function LinkStatusBadge({ link }: { link: ShortLink }) {
 export default function Links() {
     const {
         links,
-        total,
+        totalCount,
         hasNextPage,
         loading,
         deleting,
@@ -67,6 +67,7 @@ export default function Links() {
         refetch,
     } = useLinks();
 
+    const navigate = useNavigate();
     const { isCopied, copy } = useClipboard();
     const { success, error: toastError } = useToast();
 
@@ -76,9 +77,8 @@ export default function Links() {
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
     async function handleCopy(link: ShortLink) {
-        const url = buildShortUrl(link.shortCode);
-        const ok = await copy(url, link.id);
-        if (ok) success("Copied!", url);
+        const ok = await copy(link.shortUrl, link.id);
+        if (ok) success("Copied!", link.shortUrl);
         else toastError("Copy failed", "Could not copy to clipboard.");
     }
 
@@ -101,7 +101,7 @@ export default function Links() {
                 <div>
                     <h2 className="text-xl font-bold text-[var(--fg)]">My Links</h2>
                     <p className="text-[var(--fg-muted)] text-sm mt-0.5">
-                        {total} link{total !== 1 ? "s" : ""} total
+                        {totalCount} link{totalCount !== 1 ? "s" : ""} total
                     </p>
                 </div>
                 <Button
@@ -225,7 +225,7 @@ export default function Links() {
                                             <td className="py-3.5 px-4">
                                                 <div className="flex items-center gap-2">
                                                     <a
-                                                        href={buildShortUrl(link.shortCode)}
+                                                        href={link.shortUrl}
                                                         target="_blank"
                                                         rel="noreferrer"
                                                         className="text-[var(--color-brand-500)] hover:underline font-medium"
@@ -281,10 +281,11 @@ export default function Links() {
                                                         <Trash2 size={15} />
                                                     </button>
                                                     <button
-                                                        className="p-1.5 rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--bg-secondary)] transition-colors"
-                                                        aria-label="More options"
+                                                        onClick={() => navigate(`/analytics?linkId=${link.id}`)}
+                                                        className="p-1.5 rounded-md text-[var(--fg-muted)] hover:text-[var(--color-brand-500)] hover:bg-[var(--bg-secondary)] transition-colors"
+                                                        aria-label="View analytics"
                                                     >
-                                                        <MoreHorizontal size={15} />
+                                                        <BarChart2 size={15} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -298,8 +299,8 @@ export default function Links() {
                         <div className="px-4 py-4 border-t border-[var(--border-color)]">
                             <Pagination
                                 page={params.page}
-                                pageSize={params.pageSize}
-                                total={total}
+                                pageSize={params.limit}
+                                total={totalCount}
                                 hasNextPage={hasNextPage}
                                 onPageChange={setPage}
                             />

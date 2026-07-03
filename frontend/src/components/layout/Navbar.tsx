@@ -36,7 +36,7 @@ export function Navbar({ title }: NavbarProps) {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search links…"
-                        className="input-base pl-9 text-sm"
+                        className="input-base !pl-9 text-sm"
                     />
                 </div>
             </div>

@@ -51,7 +51,7 @@ export function SearchBar({
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
                 placeholder={placeholder}
-                className="input-base pl-9 pr-8"
+                className="input-base !pl-9 !pr-8"
                 style={{ borderRadius: "var(--radius-md)" }}
             />
             {value && (

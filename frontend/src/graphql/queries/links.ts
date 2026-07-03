@@ -5,35 +5,37 @@ export const GET_LINKS = gql`
   ${LINK_FRAGMENT}
   query GetLinks(
     $page: Int
-    $pageSize: Int
+    $limit: Int
     $search: String
     $status: String
-    $sortBy: String
-    $sortOrder: String
+    $orderBy: String
   ) {
-    links(
+    myUrls(
       page: $page
-      pageSize: $pageSize
+      limit: $limit
       search: $search
       status: $status
-      sortBy: $sortBy
-      sortOrder: $sortOrder
+      orderBy: $orderBy
     ) {
       items {
         ...LinkFields
       }
-      total
-      page
-      pageSize
-      hasNextPage
+      pagination {
+        page
+        limit
+        totalCount
+        totalPages
+        hasNextPage
+        hasPreviousPage
+      }
     }
   }
 `;
 
 export const GET_LINK = gql`
   ${LINK_FRAGMENT}
-  query GetLink($id: ID!) {
-    link(id: $id) {
+  query GetLink($id: UUID!) {
+    url(id: $id) {
       ...LinkFields
     }
   }

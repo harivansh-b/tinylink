@@ -16,10 +16,11 @@ import { SkeletonCard } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatNumber, buildShortUrl, truncateUrl, formatRelativeTime, getLinkStatus } from "@/utils";
-import type { ShortLink } from "@/types";
+import { formatNumber, truncateUrl, formatRelativeTime, getLinkStatus } from "@/utils";
 import { useState } from "react";
+import { useUser } from "@clerk/clerk-react";
 import { CreateLinkDialog } from "@/components/links/CreateLinkDialog";
+import type { ShortLink } from "@/types";
 
 const statCards = [
     {
@@ -113,28 +114,38 @@ function StatusBadge({ link }: { link: ShortLink }) {
 }
 
 export default function Dashboard() {
+    const { user } = useUser();
     const { stats, loading: statsLoading } = useDashboardStats();
-    const { links, loading: linksLoading } = useLinks({ pageSize: 5 });
+    const { links, loading: linksLoading } = useLinks({ limit: 5 });
     const [createOpen, setCreateOpen] = useState(false);
 
     return (
         <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-[var(--fg)]">
-                        Welcome back 👋
-                    </h2>
-                    <p className="text-[var(--fg-muted)] text-sm mt-1">
-                        Here's an overview of your links.
-                    </p>
+            {/* Welcoming Banner Card */}
+            <div className="relative overflow-hidden p-6 md:p-8 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] shadow-[var(--shadow-card)]">
+                {/* Decorative glow */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[var(--color-brand-500)] to-[var(--color-accent-500)] opacity-10 blur-3xl rounded-full pointer-events-none -mr-16 -mt-16" />
+
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+                    <div>
+                        <h2 className="text-3xl font-extrabold tracking-tight text-[var(--fg)]">
+                            Welcome back, <span className="gradient-text">{user?.firstName || "there"}</span>! 👋
+                        </h2>
+                        <p className="text-[var(--fg-muted)] mt-1.5 text-sm md:text-base max-w-xl">
+                            Ready to build and share something great? Here’s a summary of how your short links are performing.
+                        </p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-3">
+                        <Button
+                            size="md"
+                            leftIcon={<Plus size={16} />}
+                            className="bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-500)] hover:from-[var(--color-brand-500)] hover:to-[var(--color-brand-400)] border-none text-white shadow-sm"
+                            onClick={() => setCreateOpen(true)}
+                        >
+                            Create link
+                        </Button>
+                    </div>
                 </div>
-                <Button
-                    leftIcon={<Plus size={16} />}
-                    onClick={() => setCreateOpen(true)}
-                >
-                    New link
-                </Button>
             </div>
 
             {/* Stat cards */}
@@ -220,12 +231,12 @@ export default function Dashboard() {
                                         </td>
                                         <td className="py-3 px-3">
                                             <a
-                                                href={buildShortUrl(link.shortCode)}
+                                                href={link.shortUrl}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="text-[var(--color-brand-500)] hover:underline font-medium"
                                             >
-                                                {buildShortUrl(link.shortCode)}
+                                                {link.shortUrl}
                                             </a>
                                         </td>
                                         <td className="py-3 px-3 font-semibold">

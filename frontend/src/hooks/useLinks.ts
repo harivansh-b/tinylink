@@ -1,11 +1,12 @@
 import { useQuery, useMutation } from "@apollo/client/react";
 import { useState, useCallback } from "react";
+import { useAuth } from "@clerk/clerk-react";
 import { GET_LINKS } from "@/graphql/queries/links";
 import {
     CREATE_LINK,
     UPDATE_LINK,
     DELETE_LINK,
-    TOGGLE_LINK_ACTIVE,
+    TOGGLE_FAVORITE,
 } from "@/graphql/mutations/links";
 import type {
     ShortLink,
@@ -16,30 +17,37 @@ import type {
     GQLCreateLinkResponse,
     GQLUpdateLinkResponse,
     GQLDeleteLinkResponse,
+    GQLToggleFavoriteResponse,
 } from "@/types";
 
 export function useLinks(initialParams?: Partial<PaginationParams>) {
+    const { isSignedIn, isLoaded } = useAuth();
+
     const [params, setParams] = useState<PaginationParams>({
         page: 1,
-        pageSize: 10,
+        limit: 10,
         search: "",
         status: "all",
-        sortBy: "createdAt",
-        sortOrder: "desc",
+        orderBy: "newest",
         ...initialParams,
     });
+
+    // Skip the query until Clerk has loaded AND the user is signed in.
+    // This prevents unauthenticated requests being fired on the very first render
+    // before the Clerk token getter is wired up in the Apollo auth link.
+    const skip = !isLoaded || !isSignedIn;
 
     const { data, loading, error, refetch } = useQuery<GQLLinksResponse>(
         GET_LINKS,
         {
             variables: {
                 page: params.page,
-                pageSize: params.pageSize,
+                limit: params.limit,
                 search: params.search || undefined,
                 status: params.status === "all" ? undefined : params.status,
-                sortBy: params.sortBy,
-                sortOrder: params.sortOrder,
+                orderBy: params.orderBy,
             },
+            skip,
         }
     );
 
@@ -58,9 +66,12 @@ export function useLinks(initialParams?: Partial<PaginationParams>) {
             refetchQueries: [GET_LINKS],
         });
 
-    const [toggleLinkMutation] = useMutation(TOGGLE_LINK_ACTIVE, {
-        refetchQueries: [GET_LINKS],
-    });
+    const [toggleFavoriteMutation] = useMutation<GQLToggleFavoriteResponse>(
+        TOGGLE_FAVORITE,
+        {
+            refetchQueries: [GET_LINKS],
+        }
+    );
 
     const createLink = useCallback(
         (input: CreateLinkInput) =>
@@ -69,8 +80,8 @@ export function useLinks(initialParams?: Partial<PaginationParams>) {
     );
 
     const updateLink = useCallback(
-        (input: UpdateLinkInput) =>
-            updateLinkMutation({ variables: { input } }),
+        (id: string, input: UpdateLinkInput) =>
+            updateLinkMutation({ variables: { id, input } }),
         [updateLinkMutation]
     );
 
@@ -79,9 +90,9 @@ export function useLinks(initialParams?: Partial<PaginationParams>) {
         [deleteLinkMutation]
     );
 
-    const toggleActive = useCallback(
-        (id: string) => toggleLinkMutation({ variables: { id } }),
-        [toggleLinkMutation]
+    const toggleFavorite = useCallback(
+        (id: string) => toggleFavoriteMutation({ variables: { id } }),
+        [toggleFavoriteMutation]
     );
 
     const updateParams = useCallback((updates: Partial<PaginationParams>) => {
@@ -92,15 +103,17 @@ export function useLinks(initialParams?: Partial<PaginationParams>) {
         setParams((prev) => ({ ...prev, page }));
     }, []);
 
-    const links: ShortLink[] = data?.links?.items ?? [];
-    const total = data?.links?.total ?? 0;
-    const hasNextPage = data?.links?.hasNextPage ?? false;
+    const links: ShortLink[] = data?.myUrls?.items ?? [];
+    const totalCount = data?.myUrls?.pagination?.totalCount ?? 0;
+    const totalPages = data?.myUrls?.pagination?.totalPages ?? 1;
+    const hasNextPage = data?.myUrls?.pagination?.hasNextPage ?? false;
 
     return {
         links,
-        total,
+        totalCount,
+        totalPages,
         hasNextPage,
-        loading,
+        loading: loading || !isLoaded,
         error,
         creating,
         updating,
@@ -111,7 +124,7 @@ export function useLinks(initialParams?: Partial<PaginationParams>) {
         createLink,
         updateLink,
         deleteLink,
-        toggleActive,
+        toggleFavorite,
         refetch,
     };
 }
