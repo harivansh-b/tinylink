@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     GRAPHQL_DEBUG: bool = True
     SHORT_URL_BASE: str = "http://localhost:8000"
+    CORS_ALLOWED_ORIGINS: str = "*"
 
     # Rate limiting
     RATE_LIMIT_PER_MINUTE: int = 100
