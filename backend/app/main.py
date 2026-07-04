@@ -139,14 +139,27 @@ app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(ExceptionHandlerMiddleware)
 
 cors_origins = [
-    origin.strip()
+    origin.strip().rstrip("/")
     for origin in settings.CORS_ALLOWED_ORIGINS.split(",")
     if origin.strip()
 ]
+
+# If wildcard is allowed, we cannot use allow_credentials=True
+# We check if "*" is present in the list of origins
+allow_all_origins = "*" in cors_origins or len(cors_origins) == 0
+if allow_all_origins:
+    cors_origins = ["*"]
+    allow_credentials = False
+else:
+    allow_credentials = True
+
+logger.info("CORS allowed origins: %s (allow_credentials=%s)", cors_origins, allow_credentials)
+logger.info("Short URL base: %s", settings.SHORT_URL_BASE)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
