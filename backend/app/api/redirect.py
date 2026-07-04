@@ -26,14 +26,6 @@ def redirect(short_code: str, request: Request) -> RedirectResponse:
     """
     cache = CacheService()
 
-    # Rate limiting
-    client_ip = request.client.host if request.client else "unknown"
-    if not cache.check_rate_limit(client_ip, settings.RATE_LIMIT_PER_MINUTE):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded. Try again later.",
-        )
-
     # 1. Try Redis cache
     cached = cache.get_redirect(short_code)
     if cached:

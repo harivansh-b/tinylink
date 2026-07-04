@@ -11,9 +11,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 # Override env vars before importing app
-os.environ.setdefault("DATABASE_URL", "sqlite:///test.db")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
-os.environ.setdefault("CLERK_PUBLISHABLE_KEY", "pk_test_dGVzdC5jbGVyay5hY2NvdW50cy5kZXYk")
+os.environ["DATABASE_URL"] = "sqlite:///test.db"
+os.environ["REDIS_URL"] = "redis://localhost:6379"
+os.environ["CLERK_PUBLISHABLE_KEY"] = "pk_test_dGVzdC5jbGVyay5hY2NvdW50cy5kZXYk"
+os.environ["UPSTASH_REDIS_REST_URL"] = ""
+os.environ["UPSTASH_REDIS_REST_TOKEN"] = ""
+
 
 from app.models.base import Base
 from app.models import User, ShortURL, Click  # noqa: E402

@@ -15,8 +15,10 @@ from app.graphql.context import GraphQLContext
 from app.graphql.schema import schema
 from app.middleware.exception_handler import ExceptionHandlerMiddleware
 from app.middleware.logging import RequestLoggingMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
+
 
 logging.basicConfig(
     level=logging.INFO if settings.is_production else logging.DEBUG,
@@ -132,6 +134,7 @@ app = FastAPI(
 )
 
 # Middleware (order matters: outermost runs first)
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(ExceptionHandlerMiddleware)
 
