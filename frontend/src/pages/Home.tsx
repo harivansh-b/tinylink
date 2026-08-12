@@ -1,5 +1,7 @@
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+
 import {
     Zap,
     Link2,
@@ -12,9 +14,11 @@ import {
     Copy,
     ExternalLink,
 } from "lucide-react";
-import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, useUser } from "@clerk/clerk-react";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { useRazorpay } from "@/hooks/useRazorpay";
+import { useToast } from "@/hooks/useToast";
 
 /* ─── GitHub icon (inline SVG — lucide-react omits it in some versions) ──── */
 function GithubIcon({ size = 16 }: { size?: number }) {
@@ -48,19 +52,22 @@ const features = [
 /* ─── Pricing ────────────────────────────────────── */
 const plans = [
     {
+        id: "free",
         name: "Starter", price: "Free", period: "", desc: "For personal use and side projects",
-        features: ["50 links / month", "Basic analytics", "Custom aliases", "QR codes"],
+        features: ["25 short links", "Basic analytics", "Standard QR codes", "7-day click history"],
         cta: "Get started", hot: false,
     },
     {
-        name: "Pro", price: "$9", period: "/ mo", desc: "For creators and growing teams",
-        features: ["Unlimited links", "Advanced analytics", "Custom domains", "Link expiration", "Priority support"],
-        cta: "Start free trial", hot: true,
+        id: "pro",
+        name: "Pro", price: "\u20B9499", period: "/ mo", desc: "For creators and growing teams",
+        features: ["500 short links", "Advanced analytics", "Custom aliases", "90-day history", "Link expiry", "Priority support"],
+        cta: "Upgrade to Pro", hot: true,
     },
     {
-        name: "Enterprise", price: "Custom", period: "", desc: "For large-scale organisations",
-        features: ["Everything in Pro", "SSO / SAML", "99.9% SLA", "Dedicated support", "Custom integrations"],
-        cta: "Contact sales", hot: false,
+        id: "enterprise",
+        name: "Enterprise", price: "\u20B91,999", period: "/ mo", desc: "For large-scale organisations",
+        features: ["Unlimited links", "Full analytics", "Custom domains", "Unlimited history", "Bulk import/export", "Dedicated support"],
+        cta: "Upgrade to Enterprise", hot: false,
     },
 ];
 
@@ -114,8 +121,33 @@ function TiltCard({ children, className }: { children: React.ReactNode; classNam
 /* Page                                               */
 /* ────────────────────────────────────────────────── */
 export default function Home() {
+    const { pay, loading: payLoading } = useRazorpay();
+    const { user } = useUser();
+    const { success, error: toastErr } = useToast();
+    const navigate = useNavigate();
+    const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null);
+
+    async function handleUpgrade(planId: string) {
+        if (!user) { navigate("/dashboard"); return; }
+        if (planId === "free") { navigate("/dashboard"); return; }
+        setUpgradingPlan(planId);
+        const result = await pay(
+            planId,
+            user.primaryEmailAddress?.emailAddress,
+            user.fullName || "",
+        );
+        setUpgradingPlan(null);
+        if (result.success) {
+            success(
+                "Plan activated!",
+                `You are now on the ${result.plan?.charAt(0).toUpperCase()}${result.plan?.slice(1)} plan. Check your email for receipt.`,
+            );
+        } else if (result.error && result.error !== "Payment cancelled") {
+            toastErr("Payment failed", result.error);
+        }
+    }
     return (
-        <div className="min-h-screen" style={{ background: "var(--bg)", color: "var(--fg)" }}>
+        <div className="min-h-screen bg-blue-gradient-grid" style={{ background: "var(--bg)", color: "var(--fg)" }}>
 
             {/* ── Navbar ──────────────────────────────── */}
             <header className="glass sticky top-0 z-50">
@@ -534,11 +566,36 @@ export default function Home() {
                                         </li>
                                     ))}
                                 </ul>
-                                <Link to="/dashboard">
-                                    <Button fullWidth variant={plan.hot ? "primary" : "secondary"} size="sm">
-                                        {plan.cta}
-                                    </Button>
-                                </Link>
+                                <SignedIn>
+                                    {plan.id === "free" ? (
+                                        <Link to="/dashboard" className="block">
+                                            <Button fullWidth variant="secondary" size="sm">
+                                                {plan.cta}
+                                            </Button>
+                                        </Link>
+                                    ) : (
+                                        <Button
+                                            id={`upgrade-${plan.id}`}
+                                            fullWidth
+                                            variant={plan.hot ? "primary" : "secondary"}
+                                            size="sm"
+                                            onClick={() => handleUpgrade(plan.id)}
+                                            disabled={payLoading && upgradingPlan === plan.id}
+                                        >
+                                            {payLoading && upgradingPlan === plan.id
+                                                ? "Processing…"
+                                                : plan.cta}
+                                        </Button>
+                                    )}
+                                </SignedIn>
+                                <SignedOut>
+                                    <Link to="/dashboard" className="block">
+                                        <Button fullWidth variant={plan.hot ? "primary" : "secondary"} size="sm">
+                                            {plan.id === "free" ? "Get started" : "Sign in to upgrade"}
+                                        </Button>
+                                    </Link>
+                                </SignedOut>
+
                             </motion.div>
                         ))}
                     </div>

@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     # Rate limiting
     RATE_LIMIT_PER_MINUTE: int = 100
 
+    # Razorpay
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+
+    # Brevo (email)
+    BREVO_API_KEY: str = ""
+    BREVO_SENDER_EMAIL: str = "noreply@tinylink.app"
+    BREVO_SENDER_NAME: str = "TinyLink"
+
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),
         env_file_encoding="utf-8",

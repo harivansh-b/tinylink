@@ -3,7 +3,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
 import { ToastContainer } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 
 const pageTitles: Record<string, string> = {
     "/dashboard": "Dashboard",
@@ -12,9 +12,11 @@ const pageTitles: Record<string, string> = {
     "/settings": "Settings",
 };
 
-const pageVariants = {
+const ease = [0.16, 1, 0.3, 1] as const;
+
+const pageVariants: Variants = {
     initial: { opacity: 0, y: 8 },
-    enter: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.16, 1, 0.3, 1] } },
+    enter: { opacity: 1, y: 0, transition: { duration: 0.32, ease } },
     exit: { opacity: 0, transition: { duration: 0.12 } },
 };
 
@@ -30,10 +32,8 @@ export function DashboardLayout() {
                 <Navbar title={title} />
 
                 {/* Main scroll area — same background language as landing */}
-                <div className="relative flex-1 overflow-y-auto">
+                <div className="relative flex-1 overflow-y-auto bg-blue-gradient-grid">
 
-                    {/* Combined dot-grid + mesh background — same as landing page */}
-                    <div className="absolute inset-0 bg-dots-grid pointer-events-none" style={{ opacity: 0.6 }} />
 
                     <AnimatePresence mode="wait">
                         <motion.main

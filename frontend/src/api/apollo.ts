@@ -6,6 +6,7 @@ import {
     from,
 } from "@apollo/client";
 import { Observable } from "@apollo/client/utilities";
+import { GET_ME } from "@/graphql/queries/me";
 
 const httpLink = createHttpLink({
     uri: import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:8000/graphql",
@@ -77,12 +78,26 @@ const authLink = new ApolloLink((operation, forward) => {
 // ── Cache ─────────────────────────────────────────────────────────────────────
 const cache = new InMemoryCache({
     typePolicies: {
+        UserType: {
+            // Apollo identifies UserType objects by their `id` field.
+            // `merge: true` means incoming fields overwrite cached fields in-place
+            // so writing `plan` directly into the cache works immediately.
+            keyFields: ["id"],
+            merge: true,
+        },
         Query: {
             fields: {
                 myUrls: {
                     keyArgs: ["search", "status", "orderBy"],
                     merge(_existing, incoming) {
                         return incoming;
+                    },
+                },
+                // Never serve `me` from cache alone — always validate with network.
+                // This prevents stale plan data after payment.
+                me: {
+                    read(existing) {
+                        return existing;
                     },
                 },
             },
@@ -96,10 +111,40 @@ export const apolloClient = new ApolloClient({
     cache,
     defaultOptions: {
         watchQuery: {
-            fetchPolicy: "cache-and-network",
+            // Use network-only globally so watchQuery never serves stale cache
+            fetchPolicy: "network-only",
+            nextFetchPolicy: "network-only",
         },
         query: {
             fetchPolicy: "network-only",
         },
     },
 });
+
+/**
+ * Immediately write a new plan value into the Apollo cache for the `me` query.
+ * Call this right after a successful payment to update the UI synchronously,
+ * before waiting for any network refetch.
+ */
+export function updateCachedPlan(plan: string): void {
+    try {
+        // Read current me from cache using the exact same document useQuery uses
+        const existing = apolloClient.readQuery<{ me: { __typename: string; id: string; plan: string } }>({
+            query: GET_ME,
+        });
+        if (!existing?.me) return;
+
+        // Write updated plan back — triggers all useQuery(GET_ME) subscribers to re-render immediately
+        apolloClient.writeQuery({
+            query: GET_ME,
+            data: {
+                me: {
+                    ...existing.me,
+                    plan,
+                },
+            },
+        });
+    } catch {
+        // Cache miss is fine — the upcoming refetch will populate it
+    }
+}

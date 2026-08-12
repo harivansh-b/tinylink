@@ -178,9 +178,11 @@ app.include_router(graphql_router, prefix="/graphql")
 from app.api.health import router as health_router
 from app.api.webhooks import router as webhook_router
 from app.api.redirect import router as redirect_router
+from app.api.payment import router as payment_router
 
 # Health and webhooks must come BEFORE the catch-all redirect
 app.include_router(health_router, tags=["Health"])
 app.include_router(webhook_router, tags=["Webhooks"])
+app.include_router(payment_router)
 # Redirect is the catch-all and must be LAST
 app.include_router(redirect_router, tags=["Redirect"])

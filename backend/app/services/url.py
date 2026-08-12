@@ -2,6 +2,7 @@
 
 import logging
 import re
+import threading
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -19,6 +20,7 @@ from app.models.url import ShortURL
 from app.models.user import User
 from app.repositories.url import ShortURLRepository
 from app.utils.shortcode import generate_short_code, validate_alias
+from app.services import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,20 @@ class ShortURLService:
             expires_at=expires_at,
         )
         logger.info("Created short URL %s for user_id=%s", short_code, user.id)
+
+        # Email notification — fire and forget in daemon thread
+        short_url_str = f"{settings.SHORT_URL_BASE}/{short_code}"
+        threading.Thread(
+            target=email_service.send_link_created_email,
+            kwargs={
+                "email":        user.email,
+                "name":         user.display_name or "",
+                "short_url":    short_url_str,
+                "original_url": original_url.strip(),
+            },
+            daemon=True,
+        ).start()
+
         return url
 
     def get_by_id(self, url_id: UUID, user: User) -> ShortURL:
@@ -214,6 +230,28 @@ class ShortURLService:
             if exp.tzinfo is None:
                 exp = exp.replace(tzinfo=timezone.utc)
             if exp <= now:
+                # Fire expiry notification email to the link owner (best-effort)
+                try:
+                    from app.db.session import SessionLocal
+                    from app.models.user import User as UserModel
+                    with SessionLocal() as db:
+                        owner = db.get(UserModel, url.user_id)
+                        if owner:
+                            expired_at_str = exp.strftime("%d %b %Y, %H:%M UTC")
+                            short_url_str = f"{settings.SHORT_URL_BASE}/{url.short_code}"
+                            threading.Thread(
+                                target=email_service.send_link_expiry_email,
+                                kwargs={
+                                    "email":        owner.email,
+                                    "name":         owner.display_name or "",
+                                    "short_url":    short_url_str,
+                                    "original_url": url.original_url,
+                                    "expired_at":   expired_at_str,
+                                },
+                                daemon=True,
+                            ).start()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Could not send link-expiry email: %s", exc)
                 raise URLExpiredError()
 
     # ─── Helpers ──────────────────────────────────────────────────────────────

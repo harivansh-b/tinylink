@@ -13,3 +13,5 @@ class UserType:
     display_name: str | None
     created_at: datetime
     updated_at: datetime
+    plan: str                      # "free" | "pro" | "enterprise"
+    plan_expires_at: datetime | None

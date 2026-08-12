@@ -1,11 +1,11 @@
-"""UserService — business logic for user management."""
-
 import logging
+import threading
 
 from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.repositories.user import UserRepository
+from app.services import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,12 @@ class UserService:
                 display_name=display_name,
             )
             logger.info("Created new user clerk_id=%s email=%s", clerk_id, email)
+            # Send welcome email in a background thread so it never blocks auth
+            threading.Thread(
+                target=email_service.send_welcome_email,
+                kwargs={"email": email, "name": display_name or ""},
+                daemon=True,
+            ).start()
         return user
 
     def get_by_id(self, user_id: object) -> User | None:

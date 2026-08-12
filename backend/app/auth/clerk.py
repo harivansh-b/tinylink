@@ -96,7 +96,10 @@ async def verify_clerk_token(token: str) -> dict:
             token,
             public_key,
             algorithms=["RS256"],
-            options={"verify_aud": False},
+            options={
+                "verify_aud": False,
+                "leeway": 30,   # tolerate up to 30 s of clock skew
+            },
         )
 
         clerk_id: str | None = payload.get("sub")

@@ -176,6 +176,55 @@ body {
   background-size: 24px 24px, 48px 48px, 48px 48px;
 }
 
+/* Blue gradient + grid — shared across ALL pages */
+.bg-blue-gradient-grid {
+  /* Grid texture */
+  background-image:
+    radial-gradient(circle, var(--dot-color) 1px, transparent 1px),
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 24px 24px, 48px 48px, 48px 48px;
+  position: relative;
+}
+
+/* Blue glow overlay rendered as a ::before pseudo-element */
+.bg-blue-gradient-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%,
+      oklch(56% 0.200 260 / 0.18) 0%,
+      transparent 70%),
+    radial-gradient(ellipse 50% 40% at 85% 60%,
+      oklch(65% 0.165 260 / 0.09) 0%,
+      transparent 60%),
+    radial-gradient(ellipse 40% 30% at 15% 80%,
+      oklch(56% 0.200 260 / 0.07) 0%,
+      transparent 60%);
+}
+
+.dark .bg-blue-gradient-grid::before {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%,
+      oklch(47% 0.210 260 / 0.22) 0%,
+      transparent 70%),
+    radial-gradient(ellipse 50% 40% at 85% 60%,
+      oklch(47% 0.210 260 / 0.12) 0%,
+      transparent 60%),
+    radial-gradient(ellipse 40% 30% at 15% 80%,
+      oklch(47% 0.210 260 / 0.09) 0%,
+      transparent 60%);
+}
+
+/* Make direct children sit above the pseudo-element */
+.bg-blue-gradient-grid>* {
+  position: relative;
+  z-index: 1;
+}
+
 /* Ambient glow spot – neutral, behind content */
 .bg-ambient {
   position: absolute;

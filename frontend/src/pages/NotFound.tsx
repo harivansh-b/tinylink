@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 export default function NotFound() {
     return (
         <div
-            className="min-h-screen flex flex-col items-center justify-center p-8 text-center"
+            className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-blue-gradient-grid"
             style={{ background: "var(--bg)" }}
         >
             {/* Orb */}
