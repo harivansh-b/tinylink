@@ -1,16 +1,9 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-    Plus,
-    Copy,
-    Check,
-    Pencil,
-    Trash2,
-    QrCode,
-    BarChart2,
-    ExternalLink,
-    Filter,
+    Plus, Copy, Check, Pencil, Trash2,
+    QrCode, BarChart2, ExternalLink, Link2,
 } from "lucide-react";
 import { useLinks } from "@/hooks/useLinks";
 import { useClipboard } from "@/hooks/useClipboard";
@@ -26,17 +19,13 @@ import { ConfirmModal } from "@/components/ui/Modal";
 import { CreateLinkDialog } from "@/components/links/CreateLinkDialog";
 import { EditLinkDialog } from "@/components/links/EditLinkDialog";
 import { QRCodeModal } from "@/components/links/QRCodeModal";
-import {
-    formatNumber,
-    truncateUrl,
-    formatDate,
-    formatExpiry,
-    getLinkStatus,
-} from "@/utils";
-import type { LinkStatus, ShortLink } from "@/types";
+import { formatNumber, truncateUrl, formatDate, formatExpiry, getLinkStatus } from "@/utils";
 import { cn } from "@/utils";
+import type { LinkStatus, ShortLink } from "@/types";
 
-const statusFilters: { label: string; value: LinkStatus }[] = [
+const ease = [0.16, 1, 0.3, 1] as const;
+
+const STATUS_FILTERS: { label: string; value: LinkStatus }[] = [
     { label: "All", value: "all" },
     { label: "Active", value: "active" },
     { label: "Inactive", value: "inactive" },
@@ -46,25 +35,38 @@ const statusFilters: { label: string; value: LinkStatus }[] = [
 function LinkStatusBadge({ link }: { link: ShortLink }) {
     const status = getLinkStatus(link.isActive, link.expiresAt);
     const map: Record<string, "success" | "danger" | "warning"> = {
-        active: "success",
-        inactive: "danger",
-        expired: "warning",
+        active: "success", inactive: "danger", expired: "warning",
     };
     return <Badge variant={map[status]} dot>{status}</Badge>;
 }
 
+function ActionBtn({
+    label, onClick, danger = false, children,
+}: { label: string; onClick: () => void; danger?: boolean; children: React.ReactNode }) {
+    return (
+        <motion.button
+            onClick={onClick}
+            aria-label={label}
+            title={label}
+            whileHover={{ scale: 1.12 }}
+            whileTap={{ scale: 0.88 }}
+            transition={{ duration: 0.12 }}
+            className={cn(
+                "p-1.5 rounded-md transition-colors",
+                danger
+                    ? "text-[var(--fg-muted)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/15"
+                    : "text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--bg-secondary)]"
+            )}
+        >
+            {children}
+        </motion.button>
+    );
+}
+
 export default function Links() {
     const {
-        links,
-        totalCount,
-        hasNextPage,
-        loading,
-        deleting,
-        params,
-        updateParams,
-        setPage,
-        deleteLink,
-        refetch,
+        links, totalCount, hasNextPage, loading, deleting,
+        params, updateParams, setPage, deleteLink, refetch,
     } = useLinks();
 
     const navigate = useNavigate();
@@ -95,241 +97,227 @@ export default function Links() {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-6 w-full">
+
+            {/* ── Page header ───────────────────────── */}
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease }}
+                className="flex flex-col sm:flex-row sm:items-end justify-between gap-4"
+            >
                 <div>
-                    <h2 className="text-xl font-bold text-[var(--fg)]">My Links</h2>
-                    <p className="text-[var(--fg-muted)] text-sm mt-0.5">
-                        {totalCount} link{totalCount !== 1 ? "s" : ""} total
+                    <p className="text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: "var(--color-brand-500)" }}>
+                        Link Management
+                    </p>
+                    <h1 className="text-[1.625rem] font-bold leading-tight" style={{ color: "var(--fg)", letterSpacing: "-0.025em" }}>
+                        My Links
+                    </h1>
+                    <p className="text-[13.5px] mt-1" style={{ color: "var(--fg-muted)" }}>
+                        {totalCount} link{totalCount !== 1 ? "s" : ""} — create, edit, and track them all here.
                     </p>
                 </div>
-                <Button
-                    leftIcon={<Plus size={16} />}
-                    onClick={() => setCreateOpen(true)}
-                >
+                <Button size="sm" leftIcon={<Plus size={13} />} onClick={() => setCreateOpen(true)}>
                     New link
                 </Button>
-            </div>
+            </motion.div>
 
-            {/* Filters */}
-            <Card padding="sm">
-                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                    <SearchBar
-                        value={params.search ?? ""}
-                        onChange={(v) => updateParams({ search: v })}
-                        placeholder="Search by URL or alias…"
-                        className="flex-1"
-                    />
-                    <div className="flex items-center gap-2">
-                        <Filter size={14} className="text-[var(--fg-muted)]" />
-                        {statusFilters.map((f) => (
-                            <button
-                                key={f.value}
-                                onClick={() => updateParams({ status: f.value })}
-                                className={cn(
-                                    "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                                    params.status === f.value
-                                        ? "bg-[var(--color-brand-500)] text-white"
-                                        : "text-[var(--fg-secondary)] hover:bg-[var(--bg-secondary)]"
-                                )}
-                            >
-                                {f.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </Card>
+            {/* ── Table container ───────────────────── */}
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.08, ease }}
+            >
+                <Card padding="none" className="w-full">
 
-            {/* Table */}
-            <Card padding="none">
-                {loading ? (
-                    <div className="p-5">
-                        <SkeletonTable rows={6} />
-                    </div>
-                ) : links.length === 0 ? (
-                    <EmptyState
-                        variant={params.search ? "search" : "default"}
-                        title={params.search ? "No links found" : "No links yet"}
-                        description={
-                            params.search
-                                ? `No results for "${params.search}". Try a different search.`
-                                : "Create your first short link to get started."
-                        }
-                        action={
-                            !params.search ? (
-                                <Button
-                                    size="sm"
-                                    leftIcon={<Plus size={14} />}
-                                    onClick={() => setCreateOpen(true)}
-                                >
-                                    Create link
-                                </Button>
-                            ) : undefined
-                        }
-                    />
-                ) : (
-                    <>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-[var(--border-color)] bg-[var(--bg-secondary)]">
-                                        <th className="text-left py-3 px-4 text-[var(--fg-muted)] font-medium text-xs uppercase tracking-wide">
-                                            Original URL
-                                        </th>
-                                        <th className="text-left py-3 px-4 text-[var(--fg-muted)] font-medium text-xs uppercase tracking-wide">
-                                            Short URL
-                                        </th>
-                                        <th className="text-left py-3 px-4 text-[var(--fg-muted)] font-medium text-xs uppercase tracking-wide">
-                                            Clicks
-                                        </th>
-                                        <th className="text-left py-3 px-4 text-[var(--fg-muted)] font-medium text-xs uppercase tracking-wide">
-                                            Status
-                                        </th>
-                                        <th className="text-left py-3 px-4 text-[var(--fg-muted)] font-medium text-xs uppercase tracking-wide">
-                                            Expiry
-                                        </th>
-                                        <th className="text-left py-3 px-4 text-[var(--fg-muted)] font-medium text-xs uppercase tracking-wide">
-                                            Created
-                                        </th>
-                                        <th className="py-3 px-4 text-[var(--fg-muted)] font-medium text-xs uppercase tracking-wide text-right">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {links.map((link, i) => (
-                                        <motion.tr
-                                            key={link.id}
-                                            initial={{ opacity: 0, y: 6 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: i * 0.04 }}
-                                            className="table-row-hover border-b border-[var(--border-color)] last:border-0"
-                                        >
-                                            <td className="py-3.5 px-4 text-[var(--fg-secondary)] max-w-[200px]">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span title={link.originalUrl}>
-                                                        {truncateUrl(link.originalUrl, 36)}
-                                                    </span>
-                                                    <a
-                                                        href={link.originalUrl}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="text-[var(--fg-muted)] hover:text-[var(--fg)] shrink-0"
-                                                        aria-label="Open original URL"
-                                                    >
-                                                        <ExternalLink size={13} />
-                                                    </a>
-                                                </div>
-                                            </td>
-                                            <td className="py-3.5 px-4">
-                                                <div className="flex items-center gap-2">
-                                                    <a
-                                                        href={link.shortUrl}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="text-[var(--color-brand-500)] hover:underline font-medium"
-                                                    >
-                                                        {link.shortCode}
-                                                    </a>
-                                                    <button
-                                                        onClick={() => handleCopy(link)}
-                                                        className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
-                                                        aria-label="Copy short URL"
-                                                    >
-                                                        {isCopied(link.id) ? (
-                                                            <Check size={14} className="text-emerald-500" />
-                                                        ) : (
-                                                            <Copy size={14} />
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                            <td className="py-3.5 px-4 font-semibold">
-                                                {formatNumber(link.clickCount)}
-                                            </td>
-                                            <td className="py-3.5 px-4">
-                                                <LinkStatusBadge link={link} />
-                                            </td>
-                                            <td className="py-3.5 px-4 text-[var(--fg-muted)]">
-                                                {formatExpiry(link.expiresAt)}
-                                            </td>
-                                            <td className="py-3.5 px-4 text-[var(--fg-muted)]">
-                                                {formatDate(link.createdAt)}
-                                            </td>
-                                            <td className="py-3.5 px-4">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <button
-                                                        onClick={() => setQrLink(link)}
-                                                        className="p-1.5 rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--bg-secondary)] transition-colors"
-                                                        aria-label="Show QR code"
-                                                    >
-                                                        <QrCode size={15} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setEditLink(link)}
-                                                        className="p-1.5 rounded-md text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--bg-secondary)] transition-colors"
-                                                        aria-label="Edit link"
-                                                    >
-                                                        <Pencil size={15} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeleteTarget(link.id)}
-                                                        className="p-1.5 rounded-md text-[var(--fg-muted)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                                        aria-label="Delete link"
-                                                    >
-                                                        <Trash2 size={15} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => navigate(`/analytics?linkId=${link.id}`)}
-                                                        className="p-1.5 rounded-md text-[var(--fg-muted)] hover:text-[var(--color-brand-500)] hover:bg-[var(--bg-secondary)] transition-colors"
-                                                        aria-label="View analytics"
-                                                    >
-                                                        <BarChart2 size={15} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </motion.tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                    {/* Filter bar */}
+                    <div
+                        className="flex flex-col sm:flex-row gap-3 items-start sm:items-center px-5 py-4 border-b"
+                        style={{ borderColor: "var(--border-color)" }}
+                    >
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{
+                                background: "color-mix(in srgb, var(--color-brand-500) 10%, var(--bg-secondary))",
+                                border: "1px solid color-mix(in srgb, var(--color-brand-500) 20%, var(--border-color))",
+                            }}>
+                                <Link2 size={12} style={{ color: "var(--color-brand-500)" }} />
+                            </div>
+                            <h2 className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>All Links</h2>
                         </div>
 
-                        {/* Pagination */}
-                        <div className="px-4 py-4 border-t border-[var(--border-color)]">
-                            <Pagination
-                                page={params.page}
-                                pageSize={params.limit}
-                                total={totalCount}
-                                hasNextPage={hasNextPage}
-                                onPageChange={setPage}
+                        <div className="flex flex-wrap gap-2.5 items-center">
+                            <SearchBar
+                                value={params.search ?? ""}
+                                onChange={v => updateParams({ search: v })}
+                                placeholder="Search URL or alias…"
+                                className="w-52"
                             />
+                            {/* Status pill group */}
+                            <div
+                                className="flex items-center gap-0.5 p-0.5 rounded-lg"
+                                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)" }}
+                            >
+                                {STATUS_FILTERS.map(f => (
+                                    <button
+                                        key={f.value}
+                                        onClick={() => updateParams({ status: f.value })}
+                                        className={cn(
+                                            "px-2.5 py-1 rounded-md text-[12px] font-medium transition-all duration-150",
+                                            params.status === f.value
+                                                ? "shadow-xs text-[var(--fg)]"
+                                                : "text-[var(--fg-muted)] hover:text-[var(--fg-secondary)]"
+                                        )}
+                                        style={params.status === f.value
+                                            ? { background: "var(--card-bg)" }
+                                            : undefined
+                                        }
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </>
-                )}
-            </Card>
+                    </div>
+
+                    {/* Table body */}
+                    {loading ? (
+                        <div className="p-5"><SkeletonTable rows={7} /></div>
+                    ) : links.length === 0 ? (
+                        <EmptyState
+                            variant={params.search ? "search" : "default"}
+                            title={params.search ? "No links found" : "No links yet"}
+                            description={
+                                params.search
+                                    ? `No results for "${params.search}".`
+                                    : "Create your first short link to get started."
+                            }
+                            action={!params.search
+                                ? <Button size="sm" leftIcon={<Plus size={13} />} onClick={() => setCreateOpen(true)}>Create link</Button>
+                                : undefined
+                            }
+                        />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr style={{ borderBottom: "1px solid var(--border-color)", background: "var(--bg-secondary)" }}>
+                                            {["Short URL", "Destination", "Clicks", "Status", "Expiry", "Created", "Actions"].map((col, i) => (
+                                                <th
+                                                    key={i}
+                                                    className={`py-2.5 px-5 font-semibold text-[10.5px] uppercase tracking-wider ${i === 6 ? "text-right" : "text-left"}`}
+                                                    style={{ color: "var(--fg-muted)" }}
+                                                >
+                                                    {col}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <AnimatePresence initial={false}>
+                                            {links.map((link, i) => (
+                                                <motion.tr
+                                                    key={link.id}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    transition={{ delay: i * 0.025 }}
+                                                    className="table-row-hover group"
+                                                    style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                                                >
+                                                    {/* Short URL + copy */}
+                                                    <td className="py-3.5 px-5">
+                                                        <div className="flex items-center gap-2">
+                                                            <a
+                                                                href={link.shortUrl}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="font-semibold font-mono text-[12px] hover:underline"
+                                                                style={{ color: "var(--color-brand-500)" }}
+                                                                onClick={e => e.stopPropagation()}
+                                                            >
+                                                                {link.shortCode}
+                                                            </a>
+                                                            <motion.button
+                                                                onClick={() => handleCopy(link)}
+                                                                whileTap={{ scale: 0.8 }}
+                                                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                style={{ color: "var(--fg-muted)" }}
+                                                                aria-label="Copy"
+                                                            >
+                                                                <AnimatePresence mode="wait">
+                                                                    {isCopied(link.id)
+                                                                        ? <motion.span key="ck" initial={{ scale: 0.7 }} animate={{ scale: 1 }} exit={{ scale: 0.7 }}>
+                                                                            <Check size={12} style={{ color: "#4ade80" }} />
+                                                                        </motion.span>
+                                                                        : <motion.span key="cp" initial={{ scale: 0.7 }} animate={{ scale: 1 }} exit={{ scale: 0.7 }}>
+                                                                            <Copy size={12} />
+                                                                        </motion.span>
+                                                                    }
+                                                                </AnimatePresence>
+                                                            </motion.button>
+                                                        </div>
+                                                    </td>
+
+                                                    {/* Destination */}
+                                                    <td className="py-3.5 px-5 max-w-[220px]">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[13px] truncate" style={{ color: "var(--fg-secondary)" }} title={link.originalUrl}>
+                                                                {truncateUrl(link.originalUrl, 38)}
+                                                            </span>
+                                                            <a href={link.originalUrl} target="_blank" rel="noreferrer"
+                                                                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                style={{ color: "var(--fg-muted)" }} onClick={e => e.stopPropagation()}>
+                                                                <ExternalLink size={11} />
+                                                            </a>
+                                                        </div>
+                                                    </td>
+
+                                                    <td className="py-3.5 px-5 text-[13px] font-bold" style={{ color: "var(--fg)" }}>
+                                                        {formatNumber(link.clickCount)}
+                                                    </td>
+                                                    <td className="py-3.5 px-5"><LinkStatusBadge link={link} /></td>
+                                                    <td className="py-3.5 px-5 text-[13px]" style={{ color: "var(--fg-muted)" }}>{formatExpiry(link.expiresAt)}</td>
+                                                    <td className="py-3.5 px-5 text-[13px]" style={{ color: "var(--fg-muted)" }}>{formatDate(link.createdAt)}</td>
+
+                                                    {/* Actions */}
+                                                    <td className="py-3.5 px-5">
+                                                        <div className="flex items-center justify-end gap-0.5">
+                                                            <ActionBtn label="QR code" onClick={() => setQrLink(link)}><QrCode size={14} /></ActionBtn>
+                                                            <ActionBtn label="Analytics" onClick={() => navigate(`/analytics?linkId=${link.id}`)}><BarChart2 size={14} /></ActionBtn>
+                                                            <ActionBtn label="Edit" onClick={() => setEditLink(link)}><Pencil size={14} /></ActionBtn>
+                                                            <ActionBtn label="Delete" danger onClick={() => setDeleteTarget(link.id)}><Trash2 size={14} /></ActionBtn>
+                                                        </div>
+                                                    </td>
+                                                </motion.tr>
+                                            ))}
+                                        </AnimatePresence>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Pagination */}
+                            <div className="px-5 py-3.5" style={{ borderTop: "1px solid var(--border-color)" }}>
+                                <Pagination
+                                    page={params.page}
+                                    pageSize={params.limit}
+                                    total={totalCount}
+                                    hasNextPage={hasNextPage}
+                                    onPageChange={setPage}
+                                />
+                            </div>
+                        </>
+                    )}
+                </Card>
+            </motion.div>
 
             {/* Dialogs */}
-            <CreateLinkDialog
-                open={createOpen}
-                onClose={() => setCreateOpen(false)}
-                onSuccess={refetch}
-            />
+            <CreateLinkDialog open={createOpen} onClose={() => setCreateOpen(false)} onSuccess={refetch} />
             {editLink && (
-                <EditLinkDialog
-                    link={editLink}
-                    open={!!editLink}
-                    onClose={() => setEditLink(null)}
-                    onSuccess={() => { setEditLink(null); refetch(); }}
-                />
+                <EditLinkDialog link={editLink} open={!!editLink}
+                    onClose={() => setEditLink(null)} onSuccess={() => { setEditLink(null); refetch(); }} />
             )}
-            {qrLink && (
-                <QRCodeModal
-                    link={qrLink}
-                    open={!!qrLink}
-                    onClose={() => setQrLink(null)}
-                />
-            )}
+            {qrLink && <QRCodeModal link={qrLink} open={!!qrLink} onClose={() => setQrLink(null)} />}
             <ConfirmModal
                 open={!!deleteTarget}
                 onClose={() => setDeleteTarget(null)}

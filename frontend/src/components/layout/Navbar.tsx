@@ -1,63 +1,55 @@
 import { UserButton } from "@clerk/clerk-react";
-import { Bell, Search } from "lucide-react";
-import { useState } from "react";
+import { Bell } from "lucide-react";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
-import { cn } from "@/utils";
 
 interface NavbarProps {
     title?: string;
 }
 
 export function Navbar({ title }: NavbarProps) {
-    const [search, setSearch] = useState("");
-
     return (
         <header
-            className={cn(
-                "glass h-16 flex items-center justify-between px-6 shrink-0 sticky top-0 z-30"
-            )}
+            className="glass h-14 flex items-center justify-between px-5 shrink-0 sticky top-0 z-30"
         >
             {/* Left: page title */}
             <div className="flex items-center gap-3">
                 {title && (
-                    <h1 className="text-lg font-semibold text-[var(--fg)]">{title}</h1>
+                    <h1
+                        className="text-[14px] font-semibold tracking-tight"
+                        style={{ color: "var(--fg)" }}
+                    >
+                        {title}
+                    </h1>
                 )}
             </div>
 
-            {/* Center: search */}
-            <div className="hidden md:flex flex-1 max-w-sm mx-8">
-                <div className="relative w-full">
-                    <Search
-                        size={15}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--fg-muted)] pointer-events-none"
-                    />
-                    <input
-                        type="search"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search links…"
-                        className="input-base !pl-9 text-sm"
-                    />
-                </div>
-            </div>
-
             {/* Right: actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
                 <ThemeToggle compact />
 
                 <button
-                    className="relative p-2 rounded-lg text-[var(--fg-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--fg)] transition-colors"
+                    className="relative p-2 rounded-md transition-colors"
+                    style={{ color: "var(--fg-muted)" }}
+                    onMouseEnter={e => {
+                        (e.currentTarget as HTMLElement).style.background = "var(--bg-secondary)";
+                        (e.currentTarget as HTMLElement).style.color = "var(--fg)";
+                    }}
+                    onMouseLeave={e => {
+                        (e.currentTarget as HTMLElement).style.background = "transparent";
+                        (e.currentTarget as HTMLElement).style.color = "var(--fg-muted)";
+                    }}
                     aria-label="Notifications"
                 >
-                    <Bell size={18} />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--color-brand-500)] rounded-full" />
+                    <Bell size={16} />
+                    <span
+                        className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full"
+                        style={{ background: "var(--color-brand-500)" }}
+                    />
                 </button>
 
                 <UserButton
                     appearance={{
-                        elements: {
-                            avatarBox: "w-8 h-8",
-                        },
+                        elements: { avatarBox: "w-7 h-7" },
                     }}
                 />
             </div>

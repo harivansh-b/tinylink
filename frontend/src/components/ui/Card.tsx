@@ -43,7 +43,7 @@ export function CardHeader({
     return (
         <div
             className={cn(
-                "flex items-center justify-between mb-4",
+                "flex items-center justify-between mb-4 gap-3",
                 className
             )}
             {...props}
@@ -60,13 +60,36 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLHeadingElement>) {
     return (
         <h3
-            className={cn(
-                "text-base font-semibold text-[var(--fg)]",
-                className
-            )}
+            className={cn("text-[14px] font-semibold leading-none", className)}
+            style={{ color: "var(--fg)" }}
             {...props}
         >
             {children}
         </h3>
+    );
+}
+
+export function CardDescription({
+    children,
+    className,
+    ...props
+}: React.HTMLAttributes<HTMLParagraphElement>) {
+    return (
+        <p
+            className={cn("text-[12.5px] leading-relaxed", className)}
+            style={{ color: "var(--fg-muted)" }}
+            {...props}
+        >
+            {children}
+        </p>
+    );
+}
+
+export function CardDivider() {
+    return (
+        <div
+            className="-mx-5 my-4"
+            style={{ borderTop: "1px solid var(--border-color)" }}
+        />
     );
 }

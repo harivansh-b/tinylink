@@ -11,10 +11,10 @@ import { cn } from "@/utils";
 import type { ToastType } from "@/types";
 
 const iconMap: Record<ToastType, React.ReactNode> = {
-    success: <CheckCircle size={18} className="text-emerald-500 shrink-0" />,
-    error: <XCircle size={18} className="text-red-500 shrink-0" />,
-    warning: <AlertTriangle size={18} className="text-amber-500 shrink-0" />,
-    info: <Info size={18} className="text-sky-500 shrink-0" />,
+    success: <CheckCircle size={15} className="text-emerald-500 shrink-0" />,
+    error: <XCircle size={15} className="text-red-500 shrink-0" />,
+    warning: <AlertTriangle size={15} className="text-amber-500 shrink-0" />,
+    info: <Info size={15} className="text-sky-500 shrink-0" />,
 };
 
 const borderMap: Record<ToastType, string> = {
@@ -39,17 +39,18 @@ export function ToastContainer() {
                         exit={{ opacity: 0, x: 80, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                         className={cn(
-                            "pointer-events-auto card p-4 border-l-4 flex items-start gap-3 min-w-[300px] max-w-[400px]",
+                            "pointer-events-auto card p-3.5 border-l-[3px] flex items-start gap-2.5 min-w-[280px] max-w-[380px]",
                             borderMap[toast.type]
                         )}
+                        style={{ boxShadow: "var(--shadow-elevated)" }}
                     >
                         {iconMap[toast.type]}
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-[var(--fg)]">
+                            <p className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>
                                 {toast.title}
                             </p>
                             {toast.message && (
-                                <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                                <p className="text-[11.5px] mt-0.5" style={{ color: "var(--fg-muted)" }}>
                                     {toast.message}
                                 </p>
                             )}

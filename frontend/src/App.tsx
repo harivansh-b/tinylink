@@ -5,6 +5,7 @@ import { apolloClient, setClerkTokenGetter, setClerkUserInfo } from "@/api/apoll
 import { ThemeProvider } from "@/hooks/useTheme";
 import { ToastProvider } from "@/hooks/useToast";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { PremiumCursor } from "@/components/ui/Cursor";
 import { AppRoutes } from "@/routes";
 
 /**
@@ -34,6 +35,7 @@ export default function App() {
       <ThemeProvider>
         <ToastProvider>
           <BrowserRouter>
+            <PremiumCursor />
             <ClerkApolloSync />
             <ErrorBoundary>
               <AppRoutes />
