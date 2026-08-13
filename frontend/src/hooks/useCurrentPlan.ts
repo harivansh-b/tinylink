@@ -1,76 +1,135 @@
 /**
- * useCurrentPlan — fetches the authenticated user's current subscription plan
- * from the GraphQL `me` query. Cached by Apollo so all consumers stay in sync.
+ * useCurrentPlan — always fetches the user's live subscription plan
+ * directly from the backend via a raw GraphQL POST. No Apollo cache involved.
+ *
+ * Re-fetches:
+ *  - On mount
+ *  - Whenever `refetch()` is called (e.g. after payment)
+ *  - Whenever the auth session changes
  */
-import { useState } from "react";
-import { useQuery, useApolloClient } from "@apollo/client/react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@clerk/clerk-react";
-import { GET_ME } from "@/graphql/queries/me";
 
 export type PlanTier = "free" | "pro" | "enterprise";
 
-interface MeData {
-    me: {
-        id: string;
-        email: string;
-        display_name: string | null;
-        plan: PlanTier;
-        plan_expires_at: string | null;
-    };
+interface PlanState {
+    plan: PlanTier;
+    planExpiresAt: string | null;
+    loading: boolean;
+    error: string | null;
 }
 
+// Derive the bare API base — strip /graphql suffix if someone sets VITE_API_URL wrong
+const _rawBase: string =
+    import.meta.env.VITE_API_URL ||
+    // Fall back: strip /graphql from VITE_GRAPHQL_URL
+    (import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:8000/graphql").replace(/\/graphql\/?$/, "");
+const API_BASE = _rawBase.replace(/\/graphql\/?$/, "");
+const GRAPHQL_URL = `${API_BASE}/graphql`;
+
+const ME_QUERY = `
+  query GetMe {
+    me {
+      id
+      plan
+      plan_expires_at
+    }
+  }
+`;
+
 export function useCurrentPlan() {
-    const { isSignedIn, isLoaded } = useAuth();
-    const client = useApolloClient();
+    const { getToken, isSignedIn, isLoaded } = useAuth();
 
-    // Optimistic override — set immediately after payment, cleared once network confirms
-    const [optimisticPlan, setOptimisticPlan] = useState<PlanTier | null>(null);
-
-    const { data, loading, refetch } = useQuery<MeData>(GET_ME, {
-        skip: !isLoaded || !isSignedIn,
-        // cache-and-network: serve cached plan instantly (so optimistic writes render),
-        // but always send a network request to confirm the real plan.
-        fetchPolicy: "cache-and-network",
-        nextFetchPolicy: "cache-and-network",
+    const [state, setState] = useState<PlanState>({
+        plan: "free",
+        planExpiresAt: null,
+        loading: true,
+        error: null,
     });
 
-    const networkPlan: PlanTier = data?.me?.plan ?? "free";
-    // Optimistic plan wins until it matches the network value (which clears it)
-    const plan: PlanTier = optimisticPlan ?? networkPlan;
+    // Bump this counter to trigger a re-fetch
+    const [fetchTick, setFetchTick] = useState(0);
+    const abortRef = useRef<AbortController | null>(null);
 
-    /**
-     * Call right after a successful payment to instantly show the new plan
-     * before the network refetch resolves. Clears itself once confirmed.
-     */
-    function setOptimistic(newPlan: PlanTier) {
-        setOptimisticPlan(newPlan);
-    }
-
-    /**
-     * Refetch from network, then clear the optimistic override once done.
-     * Use after payment to confirm the backend persisted the plan.
-     */
-    async function refetchAndConfirm() {
-        try {
-            await refetch();
-        } finally {
-            setOptimisticPlan(null);
+    const fetchPlan = useCallback(async () => {
+        if (!isLoaded || !isSignedIn) {
+            setState((s) => ({ ...s, plan: "free", loading: false }));
+            return;
         }
+
+        // Cancel any in-flight request
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+
+        setState((s) => ({ ...s, loading: true, error: null }));
+
+        try {
+            // Always get a fresh token — never use a cached one for billing data
+            const token = await getToken({ skipCache: true });
+            if (!token) throw new Error("No auth token");
+
+            const res = await fetch(GRAPHQL_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ query: ME_QUERY }),
+                signal: controller.signal,
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const json = await res.json() as {
+                data?: { me?: { plan: string; plan_expires_at: string | null } };
+                errors?: { message: string }[];
+            };
+
+            if (json.errors?.length) {
+                throw new Error(json.errors[0].message);
+            }
+
+            const me = json.data?.me;
+            const plan = (me?.plan ?? "free").toLowerCase() as PlanTier;
+
+            setState({
+                plan,
+                planExpiresAt: me?.plan_expires_at ?? null,
+                loading: false,
+                error: null,
+            });
+        } catch (err: unknown) {
+            if ((err as Error).name === "AbortError") return; // request was cancelled — ignore
+            setState((s) => ({
+                ...s,
+                loading: false,
+                error: err instanceof Error ? err.message : String(err),
+            }));
+        }
+    }, [isLoaded, isSignedIn, getToken]);
+
+    // Re-fetch whenever auth state changes OR fetchTick is bumped
+    useEffect(() => {
+        fetchPlan();
+        return () => {
+            abortRef.current?.abort();
+        };
+    }, [fetchPlan, fetchTick]);
+
+    /** Call after a successful payment to get the real plan from the backend. */
+    function refetch() {
+        setFetchTick((t) => t + 1);
     }
 
-    /** Force a fresh network fetch just for this hook's query. */
-    async function invalidate() {
-        await client.refetchQueries({ include: [GET_ME] });
-    }
+    const plan = state.plan;
 
     return {
         plan,
-        planExpiresAt: data?.me?.plan_expires_at ?? null,
-        loading,
-        refetch,              // raw refetch
-        refetchAndConfirm,   // post-payment: refetch + clear optimistic
-        setOptimistic,       // instant optimistic plan update
-        invalidate,
+        planExpiresAt: state.planExpiresAt,
+        loading: state.loading,
+        error: state.error,
+        refetch,
         isPro: plan === "pro" || plan === "enterprise",
         isEnterprise: plan === "enterprise",
     };

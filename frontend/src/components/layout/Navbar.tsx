@@ -278,13 +278,11 @@ interface NavbarProps {
 
 export function Navbar({ title }: NavbarProps) {
     const [showUpgrade, setShowUpgrade] = useState(false);
-    const { plan, setOptimistic, refetchAndConfirm } = useCurrentPlan();
+    const { plan, refetch } = useCurrentPlan();
 
-    function handleUpgradeSuccess(newPlan: string) {
-        // 1. Instantly flip the badge — no network round-trip needed
-        setOptimistic(newPlan as PlanTier);
-        // 2. Confirm from the backend and clear the optimistic override
-        refetchAndConfirm();
+    function handleUpgradeSuccess(_newPlan: string) {
+        // Re-fetch plan directly from backend — no cache, always live
+        refetch();
     }
 
     return (

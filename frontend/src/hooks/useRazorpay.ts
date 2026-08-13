@@ -15,7 +15,11 @@ declare global {
     }
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// Strip any accidental trailing /graphql suffix — if VITE_API_URL is mistakenly
+// set to the GraphQL endpoint URL (e.g. https://api.example.com/graphql) the
+// payment fetch URLs would become /graphql/api/payment/... (404).
+const _rawBase: string = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE = _rawBase.replace(/\/graphql\/?$/, "");
 
 interface PayResult {
     success: boolean;
