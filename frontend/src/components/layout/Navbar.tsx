@@ -6,7 +6,6 @@ import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { useCurrentPlan, type PlanTier } from "@/hooks/useCurrentPlan";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { useToast } from "@/hooks/useToast";
-import { updateCachedPlan } from "@/api/apollo";
 
 // ─── Plan metadata ────────────────────────────────────────────────────────────
 
@@ -279,13 +278,13 @@ interface NavbarProps {
 
 export function Navbar({ title }: NavbarProps) {
     const [showUpgrade, setShowUpgrade] = useState(false);
-    const { plan, refetch } = useCurrentPlan();
+    const { plan, setOptimistic, refetchAndConfirm } = useCurrentPlan();
 
     function handleUpgradeSuccess(newPlan: string) {
-        // 1. Write plan into Apollo cache immediately — badge updates right now
-        updateCachedPlan(newPlan);
-        // 2. Background network refetch to confirm and keep cache fresh
-        refetch();
+        // 1. Instantly flip the badge — no network round-trip needed
+        setOptimistic(newPlan as PlanTier);
+        // 2. Confirm from the backend and clear the optimistic override
+        refetchAndConfirm();
     }
 
     return (

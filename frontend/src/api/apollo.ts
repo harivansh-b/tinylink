@@ -6,7 +6,6 @@ import {
     from,
 } from "@apollo/client";
 import { Observable } from "@apollo/client/utilities";
-import { GET_ME } from "@/graphql/queries/me";
 
 const httpLink = createHttpLink({
     uri: import.meta.env.VITE_GRAPHQL_URL ?? "http://localhost:8000/graphql",
@@ -111,40 +110,10 @@ export const apolloClient = new ApolloClient({
     cache,
     defaultOptions: {
         watchQuery: {
-            // Use network-only globally so watchQuery never serves stale cache
-            fetchPolicy: "network-only",
-            nextFetchPolicy: "network-only",
-        },
-        query: {
-            fetchPolicy: "network-only",
+            // cache-and-network: serve cached data instantly while validating with network.
+            // This is critical for optimistic plan updates to trigger re-renders.
+            fetchPolicy: "cache-and-network",
+            nextFetchPolicy: "cache-and-network",
         },
     },
 });
-
-/**
- * Immediately write a new plan value into the Apollo cache for the `me` query.
- * Call this right after a successful payment to update the UI synchronously,
- * before waiting for any network refetch.
- */
-export function updateCachedPlan(plan: string): void {
-    try {
-        // Read current me from cache using the exact same document useQuery uses
-        const existing = apolloClient.readQuery<{ me: { __typename: string; id: string; plan: string } }>({
-            query: GET_ME,
-        });
-        if (!existing?.me) return;
-
-        // Write updated plan back — triggers all useQuery(GET_ME) subscribers to re-render immediately
-        apolloClient.writeQuery({
-            query: GET_ME,
-            data: {
-                me: {
-                    ...existing.me,
-                    plan,
-                },
-            },
-        });
-    } catch {
-        // Cache miss is fine — the upcoming refetch will populate it
-    }
-}
