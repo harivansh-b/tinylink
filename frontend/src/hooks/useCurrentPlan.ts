@@ -32,7 +32,7 @@ const ME_QUERY = `
     me {
       id
       plan
-      plan_expires_at
+      planExpiresAt
     }
   }
 `;
@@ -82,7 +82,7 @@ export function useCurrentPlan() {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const json = await res.json() as {
-                data?: { me?: { plan: string; plan_expires_at: string | null } };
+                data?: { me?: { plan: string; planExpiresAt: string | null } };
                 errors?: { message: string }[];
             };
 
@@ -95,7 +95,7 @@ export function useCurrentPlan() {
 
             setState({
                 plan,
-                planExpiresAt: me?.plan_expires_at ?? null,
+                planExpiresAt: me?.planExpiresAt ?? null,
                 loading: false,
                 error: null,
             });

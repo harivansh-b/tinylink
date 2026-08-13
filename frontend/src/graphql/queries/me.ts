@@ -6,9 +6,9 @@ export const GET_ME = gql`
             __typename
             id
             email
-            display_name
+            displayName
             plan
-            plan_expires_at
+            planExpiresAt
         }
     }
 `;
